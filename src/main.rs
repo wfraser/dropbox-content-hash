@@ -26,7 +26,7 @@ fn main() {
 
     let file_len = f.metadata()
         .map(|meta| meta.len())
-        .ok();
+        .ok(); // if we can't get file length, that's fine; just don't print progress
 
     let mut ctx = ContentHasher::new();
     let mut buf = Vec::with_capacity(BLOCK_SIZE);
