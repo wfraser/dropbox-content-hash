@@ -62,7 +62,7 @@ impl ContentHasher {
     /// Update the content hash with some data.
     pub fn update(&mut self, bytes: &[u8]) {
         // First, finish off any partial block.
-        let bytes = if self.partial != 0 {
+        let bytes = if self.partial != 0 && self.partial + bytes.len() >= BLOCK_SIZE {
             let (first, remaining) = bytes.split_at(BLOCK_SIZE - self.partial);
             self.block_ctx.get_mut().update(first);
             if self.partial + first.len() == BLOCK_SIZE {
@@ -131,6 +131,19 @@ mod tests {
         let mut ctx = ContentHasher::new();
         ctx.update(b"hello");
         assert_eq!(5, ctx.partial);
+        assert_eq!(
+            "9595c9df90075148eb06860365df33584b75bff782a510c6cd4883a419833d50",
+            &ctx.finish_str());
+    }
+
+    #[test]
+    fn tiny_updates() {
+        let mut ctx = ContentHasher::new();
+        ctx.update(b"h");
+        ctx.update(b"e");
+        ctx.update(b"l");
+        ctx.update(b"l");
+        ctx.update(b"o");
         assert_eq!(
             "9595c9df90075148eb06860365df33584b75bff782a510c6cd4883a419833d50",
             &ctx.finish_str());
