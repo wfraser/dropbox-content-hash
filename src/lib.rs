@@ -21,7 +21,7 @@ pub const BLOCK_SIZE: usize = 4 * 1024 * 1024;
 /// The size of the resulting content hash: 256 bits.
 pub const HASH_OUTPUT_SIZE: usize = 256 / 8;
 
-/// A 
+/// A context for multi-step Content Hash calculation.
 pub struct ContentHasher {
     ctx: HashContext,
     block_ctx: Cell<HashContext>,
@@ -100,6 +100,12 @@ impl ContentHasher {
         bytes.iter()
             .fold(String::new(),
                 |s, byte| s + &format!("{:02x}", byte))
+    }
+}
+
+impl Default for ContentHasher {
+    fn default() -> Self {
+        ContentHasher::new()
     }
 }
 
