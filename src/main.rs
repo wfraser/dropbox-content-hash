@@ -29,8 +29,7 @@ fn main() {
         .ok(); // if we can't get file length, that's fine; just don't print progress
 
     let mut ctx = ContentHasher::new();
-    let mut buf = Vec::with_capacity(BLOCK_SIZE);
-    buf.resize(BLOCK_SIZE, 0u8);
+    let mut buf = vec![0u8; BLOCK_SIZE];
     let mut total_read = 0;
     loop {
         let nread = f.read(&mut buf)

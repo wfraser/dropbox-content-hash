@@ -41,8 +41,7 @@ impl ContentHasher {
     /// Convenience function to hash an arbitrary byte stream.
     pub fn from_stream<R: Read>(mut r: R) -> io::Result<ContentHasher> {
         let mut ctx = ContentHasher::new();
-        let mut buf = Vec::with_capacity(BLOCK_SIZE);
-        buf.resize(BLOCK_SIZE, 0u8);
+        let mut buf = vec![0u8; BLOCK_SIZE];
         loop {
             let nread = r.read(&mut buf)?;
             ctx.update(&buf[0..nread]);
