@@ -1,3 +1,5 @@
+#![deny(missing_docs, rust_2018_idioms)]
+
 //! Utility to calculate Dropbox Content Hashes.
 //! 
 //! Dropbox Content Hashes are the result of taking a file, dividing it into 4 MiB blocks,
@@ -6,8 +8,6 @@
 //!
 //! Dropbox keeps a Content Hash of each file stored, which can be quickly obtained through the
 //! API, and can be used to verify the integrity of files uploaded to or downloaded from Dropbox.
-
-extern crate ring;
 
 use ring::digest::Context as HashContext;
 use ring::digest::SHA256;
