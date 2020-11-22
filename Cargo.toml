@@ -5,4 +5,6 @@ authors = ["Bill Fraser <wfraser@codewise.org>"]
 edition = "2018"
 
 [dependencies]
+parallel_reader = "0.1"
 ring = "0.16"
+structopt = "0.3.20"

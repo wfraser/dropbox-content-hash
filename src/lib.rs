@@ -21,6 +21,8 @@ pub const BLOCK_SIZE: usize = 4 * 1024 * 1024;
 /// The size of the resulting content hash: 256 bits.
 pub const HASH_OUTPUT_SIZE: usize = 256 / 8;
 
+pub mod parallel;
+
 /// A context for multi-step Content Hash calculation.
 pub struct ContentHasher {
     ctx: HashContext,
@@ -95,10 +97,7 @@ impl ContentHasher {
 
     /// Finish the content hash and return it as a hexadecimal string.
     pub fn finish_str(self) -> String {
-        let bytes = self.finish();
-        bytes.iter()
-            .fold(String::new(),
-                |s, byte| s + &format!("{:02x}", byte))
+        hex_string(&self.finish())
     }
 }
 
@@ -106,6 +105,11 @@ impl Default for ContentHasher {
     fn default() -> Self {
         ContentHasher::new()
     }
+}
+
+/// Given a slice of bytes, return a hexadecimal string representation.
+pub fn hex_string(bytes: &[u8]) -> String {
+    bytes.iter().fold(String::new(), |s, byte| s + &format!("{:02x}", byte))
 }
 
 #[cfg(test)]
