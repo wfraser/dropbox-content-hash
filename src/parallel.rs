@@ -27,21 +27,40 @@ impl Default for State {
 }
 
 impl State {
+    /// Add a finished block to the internal hash buffer and update the overall hash if possible.
+    pub fn add_block(&mut self, block_hash: Digest, offset: u64) {
+        if offset == self.next_offset {
+            // shortcut: skip adding to the block map and add it directly
+            self.incorporate_next_block(block_hash);
+        } else {
+            self.blocks.insert(offset, block_hash);
+        }
+        self.update_overall_hash();
+    }
+
     /// Consume sequential blocks in the internal hash buffer and update the overall hash.
-    pub fn update_overall_hash(&mut self) {
+    fn update_overall_hash(&mut self) {
         loop {
             let key = self.next_offset;
             if let Some(hash) = self.blocks.remove(&key) {
-                self.overall_hash.update(hash.as_ref());
-                self.next_offset += BLOCK_SIZE as u64;
+                self.incorporate_next_block(hash);
             } else {
                 break;
             }
         }
     }
 
+    /// Add a block to the overall hash and update the next offset pointer.
+    fn incorporate_next_block(&mut self, hash: Digest) {
+        self.overall_hash.update(hash.as_ref());
+        self.next_offset += BLOCK_SIZE as u64;
+    }
+
     /// Return the finished content hash.
-    pub fn finish(self) -> Digest {
+    pub fn finish(mut self) -> Digest {
+        if !self.blocks.is_empty() {
+            self.update_overall_hash();
+        }
         assert!(self.blocks.is_empty(), "all blocks must be incorporated in the overall hash at \
             this point");
         self.overall_hash.finish()
@@ -77,13 +96,7 @@ pub fn content_hash_from_stream(
                 state.incomplete_block_offset = Some(offset);
             }
 
-            if offset == state.next_offset {
-                state.overall_hash.update(block_hash.as_ref());
-                state.next_offset += BLOCK_SIZE as u64;
-            } else {
-                state.update_overall_hash();
-                state.blocks.insert(offset, block_hash);
-            }
+            state.add_block(block_hash, offset);
 
             Ok(())
         }),
@@ -99,10 +112,10 @@ pub fn content_hash_from_stream(
 
     // No other thread can have a copy of the Arc now, so extract the State out of the Arc and
     // Mutex so we can call finish().
-    let mut state = Arc::try_unwrap(state).map_err(|_| "unable to unpack state").unwrap()
+    let state = Arc::try_unwrap(state)
+        .map_err(|_| "unable to unpack state").unwrap()  // can't expect() because it's not Debug.
         .into_inner().unwrap();
 
-    state.update_overall_hash();
     let digest = state.finish();
 
     Ok(digest.as_ref().try_into().expect("hash output is of wrong size"))
