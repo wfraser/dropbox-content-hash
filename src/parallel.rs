@@ -52,6 +52,7 @@ impl State {
 
     /// Add a block to the overall hash and update the next offset pointer.
     fn incorporate_next_block(&mut self, hash: Digest) {
+        println!("block: {}", crate::hex_string(hash.as_ref()));
         self.overall_hash.update(hash.as_ref());
         self.next_offset += BLOCK_SIZE as u64;
     }

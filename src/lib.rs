@@ -27,7 +27,9 @@ pub mod parallel;
 pub struct ContentHasher {
     ctx: HashContext,
     block_ctx: Cell<HashContext>,
+    block_num: u64,
     partial: usize,
+    block_hashes_fn: Option<Box<dyn Fn(u64, &[u8])>>,
 }
 
 impl ContentHasher {
@@ -36,13 +38,22 @@ impl ContentHasher {
         ContentHasher {
             ctx: HashContext::new(&SHA256),
             block_ctx: Cell::new(HashContext::new(&SHA256)),
+            block_num: 0,
             partial: 0,
+            block_hashes_fn: None,
         }
     }
 
-    /// Convenience function to hash an arbitrary byte stream.
-    pub fn from_stream<R: Read>(mut r: R) -> io::Result<ContentHasher> {
-        let mut ctx = ContentHasher::new();
+    /// Create a new, empty, hasher that feeds block hashes to the given function.
+    pub fn with_block_hashes_fn(f: Box<dyn Fn(u64, &[u8])>) -> Self {
+        Self {
+            block_hashes_fn: Some(f),
+            .. Self::default()
+        }
+    }
+
+    /// Read and hash an arbitrary byte stream.
+    pub fn read_stream(&mut self, mut r: impl Read) -> io::Result<()> {
         let mut buf = vec![0u8; BLOCK_SIZE];
         loop {
             let nread = match r.read(&mut buf) {
@@ -51,8 +62,15 @@ impl ContentHasher {
                 Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
                 Err(e) => return Err(e),
             };
-            ctx.update(&buf[0..nread]);
+            self.update(&buf[0..nread]);
         }
+        Ok(())
+    }
+
+    /// Convenience function to hash an arbitrary byte stream in one shot.
+    pub fn from_stream<R: Read>(r: R) -> io::Result<ContentHasher> {
+        let mut ctx = ContentHasher::new();
+        ctx.read_stream(r)?;
         Ok(ctx)
     }
 
@@ -60,8 +78,12 @@ impl ContentHasher {
         let block_hash = self.block_ctx
             .replace(HashContext::new(&SHA256))
             .finish();
+        if let Some(f) = &self.block_hashes_fn {
+            f(self.block_num, block_hash.as_ref());
+        }
         self.ctx.update(block_hash.as_ref());
         self.partial = 0;
+        self.block_num += 1;
     }
 
     /// Update the content hash with some data.

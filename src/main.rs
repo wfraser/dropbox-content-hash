@@ -15,6 +15,10 @@ struct Args {
     /// Path to the file to hash.
     #[structopt(parse(from_os_str))]
     path: PathBuf,
+
+    /// Print block hashes as well as the final hash.
+    #[structopt(long = "blocks")]
+    print_block_hashes: bool,
 }
 
 fn main() {
@@ -37,7 +41,14 @@ fn main() {
 
     match args.threads {
         None | Some(0) => {
-            let ctx = ContentHasher::from_stream(source)
+            let mut ctx = if args.print_block_hashes {
+                ContentHasher::with_block_hashes_fn(Box::new(|block_num, hash| {
+                    println!("block {}: {}", block_num, dropbox_content_hash::hex_string(hash));
+                }))
+            } else {
+                ContentHasher::default()
+            };
+            ctx.read_stream(source)
                 .unwrap_or_else(|e| {
                     eprintln!("I/O error: {}", e);
                     exit(2);
