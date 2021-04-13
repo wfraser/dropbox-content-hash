@@ -57,24 +57,36 @@ impl ContentHasher {
     }
 
     fn finish_block(&mut self) {
-        let block_ctx = self.block_ctx.replace(HashContext::new(&SHA256));
-        self.ctx.update(block_ctx.finish().as_ref());
+        let block_hash = self.block_ctx
+            .replace(HashContext::new(&SHA256))
+            .finish();
+        self.ctx.update(block_hash.as_ref());
         self.partial = 0;
     }
 
     /// Update the content hash with some data.
-    pub fn update(&mut self, bytes: &[u8]) {
-        // First, finish off any partial block.
-        let bytes = if self.partial != 0 && self.partial + bytes.len() >= BLOCK_SIZE {
-            let (first, remaining) = bytes.split_at(BLOCK_SIZE - self.partial);
+    pub fn update(&mut self, mut bytes: &[u8]) {
+        // First, add to any partial block.
+        if self.partial != 0 {
+            // can we finish off the partial block?
+            let partial_needed = BLOCK_SIZE - self.partial;
+            let (first, remaining) = if partial_needed <= bytes.len() {
+                bytes.split_at(partial_needed)
+            } else {
+                // buffer isn't sufficient to finish the partial block
+                (bytes, &[][..])
+            };
             self.block_ctx.get_mut().update(first);
-            if self.partial + first.len() == BLOCK_SIZE {
+            self.partial += first.len();
+            if self.partial == BLOCK_SIZE {
                 self.finish_block();
+                self.partial = 0;
+            } else {
+                assert!(remaining.is_empty());
+                return;
             }
-            remaining
-        } else {
-            bytes
-        };
+            bytes = remaining;
+        }
 
         for block in bytes.chunks(BLOCK_SIZE) {
             self.block_ctx.get_mut().update(block);
@@ -90,7 +102,7 @@ impl ContentHasher {
     /// Finish the content hash and return the bytes.
     pub fn finish(mut self) -> [u8; HASH_OUTPUT_SIZE] {
         if self.partial != 0 {
-            self.ctx.update(self.block_ctx.into_inner().finish().as_ref());
+            self.finish_block();
         }
         let mut out = [0u8; HASH_OUTPUT_SIZE];
         out.copy_from_slice(self.ctx.finish().as_ref());
