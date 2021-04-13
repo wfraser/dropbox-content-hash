@@ -45,11 +45,13 @@ impl ContentHasher {
         let mut ctx = ContentHasher::new();
         let mut buf = vec![0u8; BLOCK_SIZE];
         loop {
-            let nread = r.read(&mut buf)?;
+            let nread = match r.read(&mut buf) {
+                Ok(0) => break,
+                Ok(n) => n,
+                Err(e) if e.kind() == io::ErrorKind::Interrupted => continue,
+                Err(e) => return Err(e),
+            };
             ctx.update(&buf[0..nread]);
-            if nread == 0 {
-                break;
-            }
         }
         Ok(ctx)
     }
