@@ -197,9 +197,22 @@ mod tests {
     #[test]
     fn partial_blocks() {
         let mut ctx = ContentHasher::new();
-        ctx.update(&[30; BLOCK_SIZE / 2]);
-        ctx.update(&[30; BLOCK_SIZE]);
-        ctx.update(&[30; BLOCK_SIZE / 2]);
+        ctx.update(&[30; BLOCK_SIZE / 2]);  // 1/2
+        ctx.update(&[30; BLOCK_SIZE]);      // 1-1/2
+        ctx.update(&[30; BLOCK_SIZE / 2]);  // 2
+        assert_eq!(
+            "aa562efb265c604214e4626717330e15be16f2daaabfe5d7d2c22f3e88cbc268",
+            &ctx.finish_str());
+    }
+
+    #[test]
+    fn partial_blocks_2() {
+        let mut ctx = ContentHasher::new();
+        ctx.update(&[30; BLOCK_SIZE / 4]); // 1/4
+        ctx.update(&[30; BLOCK_SIZE / 2]); // 3/4
+        ctx.update(&[30; BLOCK_SIZE / 2]); // 1-1/4
+        ctx.update(&[30; BLOCK_SIZE / 2]); // 1-3/4
+        ctx.update(&[30; BLOCK_SIZE / 4]); // 2
         assert_eq!(
             "aa562efb265c604214e4626717330e15be16f2daaabfe5d7d2c22f3e88cbc268",
             &ctx.finish_str());
