@@ -30,28 +30,21 @@ fn main() {
         .map(|meta| meta.len())
         .ok(); // if we can't get file length, that's fine; just don't print progress
 
-    let mut source: Box<dyn Read> = match file_len {
+    let source: Box<dyn Read> = match file_len {
         Some(len) => Box::new(ProgressReader::new(file, len)),
         None      => Box::new(file),
     };
 
-    if let Some(num_threads) = args.threads {
-        if num_threads > 0 {
-            match parallel::content_hash_from_stream(source, num_threads) {
-                Ok(hash) => {
-                    println!("{}", hex_string(&hash));
-                    return;
-                }
-                Err(e) => {
-                    eprintln!("{}", e);
-                    exit(2);
-                }
-            }
-        }
-    }
-
     match args.threads {
-        Some(num_threads) if num_threads > 0 => {
+        None | Some(0) => {
+            let ctx = ContentHasher::from_stream(source)
+                .unwrap_or_else(|e| {
+                    eprintln!("I/O error: {}", e);
+                    exit(2);
+                });
+            println!("{}", ctx.finish_str());
+        }
+        Some(num_threads) => {
             match parallel::content_hash_from_stream(source, num_threads) {
                 Ok(hash) => {
                     println!("{}", hex_string(&hash));
@@ -61,24 +54,6 @@ fn main() {
                     exit(2);
                 }
             }
-        }
-        _ => {
-            let mut ctx = ContentHasher::new();
-            let mut buf = vec![0u8; BLOCK_SIZE];
-            loop {
-                let nread = source.read(&mut buf)
-                    .unwrap_or_else(|e| {
-                        eprintln!("I/O error: {}", e);
-                        exit(2);
-                    });
-
-                if nread == 0 {
-                    break;
-                }
-                ctx.update(&buf[0..nread]);
-            }
-
-            println!("{}", ctx.finish_str());
         }
     }
 }
