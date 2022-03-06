@@ -1,19 +1,21 @@
+use clap::Parser;
 use dropbox_content_hash::*;
 use std::fs::File;
 use std::io::{self, Read};
 use std::path::PathBuf;
 use std::process::exit;
-use structopt::StructOpt;
 
 /// Calculate and print the Dropbox Content Hash of the given file.
-#[derive(StructOpt)]
+#[derive(Parser, Debug)]
+#[clap(author, version)]
 struct Args {
-    /// If specified, run the computation in parallel on the given number of threads.
-    #[structopt(long)]
-    threads: Option<usize>,
+    /// Run the computation in parallel on the given number of threads.
+    /// 0 means no parallelization at all.
+    #[clap(long, default_value_t = 0)]
+    threads: usize,
 
     /// Path to the file to hash.
-    #[structopt(parse(from_os_str))]
+    #[clap(parse(from_os_str))]
     path: PathBuf,
 
     /// Print block hashes as well as the final hash.
@@ -22,7 +24,7 @@ struct Args {
 }
 
 fn main() {
-    let args = Args::from_args();
+    let args = Args::parse();
 
     let file = File::open(&args.path)
         .unwrap_or_else(|e| {
@@ -39,31 +41,28 @@ fn main() {
         None      => Box::new(file),
     };
 
-    match args.threads {
-        None | Some(0) => {
-            let mut ctx = if args.print_block_hashes {
-                ContentHasher::with_block_hashes_fn(Box::new(|block_num, hash| {
-                    println!("block {}: {}", block_num, dropbox_content_hash::hex_string(hash));
-                }))
-            } else {
-                ContentHasher::default()
-            };
-            ctx.read_stream(source)
-                .unwrap_or_else(|e| {
-                    eprintln!("I/O error: {}", e);
-                    exit(2);
-                });
-            println!("{}", ctx.finish_str());
-        }
-        Some(num_threads) => {
-            match parallel::content_hash_from_stream(source, num_threads) {
-                Ok(hash) => {
-                    println!("{}", hex_string(&hash));
-                }
-                Err(e) => {
-                    eprintln!("{}", e);
-                    exit(2);
-                }
+    if args.threads == 0 {
+        let mut ctx = if args.print_block_hashes {
+            ContentHasher::with_block_hashes_fn(Box::new(|block_num, hash| {
+                println!("block {}: {}", block_num, dropbox_content_hash::hex_string(hash));
+            }))
+        } else {
+            ContentHasher::default()
+        };
+        ctx.read_stream(source)
+            .unwrap_or_else(|e| {
+                eprintln!("I/O error: {}", e);
+                exit(2);
+            });
+        println!("{}", ctx.finish_str());
+    } else {
+        match parallel::content_hash_from_stream(source, args.threads) {
+            Ok(hash) => {
+                println!("{}", hex_string(&hash));
+            }
+            Err(e) => {
+                eprintln!("{}", e);
+                exit(2);
             }
         }
     }
