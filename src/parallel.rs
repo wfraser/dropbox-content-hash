@@ -8,11 +8,15 @@ use std::convert::TryInto;
 use std::io::{self, Read};
 use std::sync::{Arc, Mutex};
 
+/// A callback function which takes the block number and the block hash as arguments.
+pub type BlockHashesFn = dyn Fn(u64, &[u8]) + Sync + Send;
+
 struct State {
     blocks: BTreeMap<u64, Digest>,
     next_offset: u64,
     overall_hash: Context,
     incomplete_block_offset: Option<u64>,
+    block_hashes_fn: Option<Box<BlockHashesFn>>,
 }
 
 impl Default for State {
@@ -22,6 +26,7 @@ impl Default for State {
             next_offset: 0,
             overall_hash: Context::new(&SHA256),
             incomplete_block_offset: None,
+            block_hashes_fn: None,
         }
     }
 }
@@ -52,7 +57,9 @@ impl State {
 
     /// Add a block to the overall hash and update the next offset pointer.
     fn incorporate_next_block(&mut self, hash: Digest) {
-        println!("block: {}", crate::hex_string(hash.as_ref()));
+        if let Some(f) = self.block_hashes_fn.as_ref() {
+            f(self.next_offset / BLOCK_SIZE as u64, hash.as_ref());
+        }
         self.overall_hash.update(hash.as_ref());
         self.next_offset += BLOCK_SIZE as u64;
     }
@@ -70,12 +77,15 @@ impl State {
 
 /// Compute a content hash from the given file or other stream, using the specified number of
 /// threads to do the computation in parallel.
-pub fn content_hash_from_stream(
+pub fn from_stream(
     source: impl Read,
     num_threads: usize,
+    block_hashes_fn: Option<Box<BlockHashesFn>>,
 ) -> io::Result<[u8; HASH_OUTPUT_SIZE]> {
-
-    let state = Arc::new(Mutex::new(State::default()));
+    let state = Arc::new(Mutex::new(State {
+        block_hashes_fn,
+        ..Default::default()
+    }));
     let thread_state = state.clone();
     match read_stream_and_process_chunks_in_parallel(source, BLOCK_SIZE, num_threads,
         Arc::new(move |offset, data: &[u8]| -> Result<(), u64> {

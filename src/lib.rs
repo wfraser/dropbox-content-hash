@@ -1,7 +1,7 @@
 #![deny(missing_docs, rust_2018_idioms)]
 
 //! Utility to calculate Dropbox Content Hashes.
-//! 
+//!
 //! Dropbox Content Hashes are the result of taking a file, dividing it into 4 MiB blocks,
 //! calculating a SHA-256 hash of each block, concatenating the hashes, and taking the SHA-256 of
 //! that.
@@ -52,7 +52,7 @@ impl ContentHasher {
     pub fn with_block_hashes_fn(f: Box<BlockHashesFn>) -> Self {
         Self {
             block_hashes_fn: Some(f),
-            .. Self::default()
+            ..Self::default()
         }
     }
 
@@ -79,9 +79,7 @@ impl ContentHasher {
     }
 
     fn finish_block(&mut self) {
-        let block_hash = self.block_ctx
-            .replace(HashContext::new(&SHA256))
-            .finish();
+        let block_hash = self.block_ctx.replace(HashContext::new(&SHA256)).finish();
         if let Some(f) = &self.block_hashes_fn {
             f(self.block_num, block_hash.as_ref());
         }
@@ -149,7 +147,9 @@ impl Default for ContentHasher {
 
 /// Given a slice of bytes, return a hexadecimal string representation.
 pub fn hex_string(bytes: &[u8]) -> String {
-    bytes.iter().fold(String::new(), |s, byte| s + &format!("{:02x}", byte))
+    bytes
+        .iter()
+        .fold(String::new(), |s, byte| s + &format!("{:02x}", byte))
 }
 
 #[cfg(test)]
@@ -166,7 +166,10 @@ mod tests {
         let r2 = ctx2.finish_str();
 
         assert_eq!(&r1, &r2);
-        assert_eq!("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", &r1);
+        assert_eq!(
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            &r1
+        );
     }
 
     #[test]
@@ -176,7 +179,8 @@ mod tests {
         assert_eq!(5, ctx.partial);
         assert_eq!(
             "9595c9df90075148eb06860365df33584b75bff782a510c6cd4883a419833d50",
-            &ctx.finish_str());
+            &ctx.finish_str()
+        );
     }
 
     #[test]
@@ -189,7 +193,8 @@ mod tests {
         ctx.update(b"o");
         assert_eq!(
             "9595c9df90075148eb06860365df33584b75bff782a510c6cd4883a419833d50",
-            &ctx.finish_str());
+            &ctx.finish_str()
+        );
     }
 
     #[test]
@@ -199,7 +204,8 @@ mod tests {
         assert_eq!(0, ctx.partial);
         assert_eq!(
             "1114501b241325c24970e0cd0b6416d80284085151e2980747ccecc4e0c156e6",
-            &ctx.finish_str());
+            &ctx.finish_str()
+        );
     }
 
     #[test]
@@ -209,7 +215,8 @@ mod tests {
         assert_eq!(1, ctx.partial);
         assert_eq!(
             "5b1d15f99119b9138a887c27d1b246cf6c584621fc75c42edd27c3d962835d4f",
-            &ctx.finish_str());
+            &ctx.finish_str()
+        );
     }
 
     #[test]
@@ -219,7 +226,8 @@ mod tests {
         assert_eq!(0, ctx.partial);
         assert_eq!(
             "aa562efb265c604214e4626717330e15be16f2daaabfe5d7d2c22f3e88cbc268",
-            &ctx.finish_str());
+            &ctx.finish_str()
+        );
     }
 
     #[test]
@@ -253,6 +261,7 @@ mod tests {
         ctx.update(&[30; BLOCK_SIZE / 4]); // 2
         assert_eq!(
             "aa562efb265c604214e4626717330e15be16f2daaabfe5d7d2c22f3e88cbc268",
-            &ctx.finish_str());
+            &ctx.finish_str()
+        );
     }
 }

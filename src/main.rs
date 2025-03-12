@@ -37,8 +37,8 @@ fn main() {
         .ok(); // if we can't get file length, that's fine; just don't print progress
 
     let source: Box<dyn Read> = match file_len {
-        Some(len) => Box::new(ProgressReader::new(file, len)),
-        None      => Box::new(file),
+        Some(len) if args.threads == 0 || !args.print_block_hashes => Box::new(ProgressReader::new(file, len)),
+        _ => Box::new(file),
     };
 
     if args.threads == 0 {
@@ -56,7 +56,13 @@ fn main() {
             });
         println!("{}", ctx.finish_str());
     } else {
-        match parallel::content_hash_from_stream(source, args.threads) {
+        match parallel::from_stream(
+            source,
+            args.threads,
+            args.print_block_hashes.then_some(Box::new(|block_num, hash| {
+                println!("block {}: {}", block_num, dropbox_content_hash::hex_string(hash));
+            })))
+        {
             Ok(hash) => {
                 println!("{}", hex_string(&hash));
             }
