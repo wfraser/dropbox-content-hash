@@ -5,6 +5,6 @@ authors = ["Bill Fraser <wfraser@codewise.org>"]
 edition = "2021"
 
 [dependencies]
-clap = { version = "3", features = ["cargo", "derive"] }
+clap = { version = "4", features = ["cargo", "derive", "string"] }
 parallel_reader = "0.1.2"
-ring = "0.16"
+ring = ">=0.17.14"

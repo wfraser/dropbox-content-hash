@@ -7,19 +7,19 @@ use std::process::exit;
 
 /// Calculate and print the Dropbox Content Hash of the given file.
 #[derive(Parser, Debug)]
-#[clap(author, version)]
+#[command(version = format!("{}\nby {}", clap::crate_version!(), clap::crate_authors!(", ")))]
 struct Args {
     /// Run the computation in parallel on the given number of threads.
     /// 0 means no parallelization at all.
-    #[clap(long, default_value_t = 0)]
+    #[arg(long, default_value_t = 0)]
     threads: usize,
 
     /// Path to the file to hash.
-    #[clap(parse(from_os_str))]
+    #[arg()]
     path: PathBuf,
 
     /// Print block hashes as well as the final hash.
-    #[structopt(long = "blocks")]
+    #[arg(long = "blocks")]
     print_block_hashes: bool,
 }
 
