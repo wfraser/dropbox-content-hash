@@ -21,6 +21,7 @@ pub const BLOCK_SIZE: usize = 4 * 1024 * 1024;
 /// The size of the resulting content hash: 256 bits.
 pub const HASH_OUTPUT_SIZE: usize = 256 / 8;
 
+#[cfg(feature = "parallel")]
 pub mod parallel;
 
 /// A callback function which takes the block number and the block hash as arguments.
