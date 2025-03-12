@@ -23,13 +23,16 @@ pub const HASH_OUTPUT_SIZE: usize = 256 / 8;
 
 pub mod parallel;
 
+/// A callback function which takes the block number and the block hash as arguments.
+pub type BlockHashesFn = dyn Fn(u64, &[u8]);
+
 /// A context for multi-step Content Hash calculation.
 pub struct ContentHasher {
     ctx: HashContext,
     block_ctx: Cell<HashContext>,
     block_num: u64,
     partial: usize,
-    block_hashes_fn: Option<Box<dyn Fn(u64, &[u8])>>,
+    block_hashes_fn: Option<Box<BlockHashesFn>>,
 }
 
 impl ContentHasher {
@@ -45,7 +48,7 @@ impl ContentHasher {
     }
 
     /// Create a new, empty, hasher that feeds block hashes to the given function.
-    pub fn with_block_hashes_fn(f: Box<dyn Fn(u64, &[u8])>) -> Self {
+    pub fn with_block_hashes_fn(f: Box<BlockHashesFn>) -> Self {
         Self {
             block_hashes_fn: Some(f),
             .. Self::default()
