@@ -21,6 +21,10 @@ struct Args {
     /// Print block hashes as well as the final hash.
     #[arg(long = "blocks")]
     print_block_hashes: bool,
+
+    /// Disable printing of progress to the console.
+    #[arg(long)]
+    no_progress: bool,
 }
 
 fn main() {
@@ -32,13 +36,18 @@ fn main() {
             exit(2);
         });
 
-    let file_len = file.metadata()
-        .map(|meta| meta.len())
-        .ok(); // if we can't get file length, that's fine; just don't print progress
+    // If we want to print progress, we need to get the file length.
+    // But printing progress interferes with parallel block hashes being printed, so skip it in
+    // that case.
+    let file_len = if !args.no_progress && (args.threads == 0 || !args.print_block_hashes) {
+        file.metadata().map(|meta| meta.len()).ok()
+    } else {
+        None
+    };
 
     let source: Box<dyn Read> = match file_len {
-        Some(len) if args.threads == 0 || !args.print_block_hashes => Box::new(ProgressReader::new(file, len)),
-        _ => Box::new(file),
+        Some(len) => Box::new(ProgressReader::new(file, len)),
+        None      => Box::new(file),
     };
 
     if args.threads == 0 {
